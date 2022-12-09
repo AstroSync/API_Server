@@ -1,21 +1,17 @@
-# 
-FROM python:3.9
+#
+FROM python:3.10
 
-# 
-WORKDIR /code
+#
+WORKDIR /api_server
 
-# 
-COPY ./requirements.txt /code/requirements.txt
+COPY ./api_server /api_server/api_server
 
-# 
-RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
+RUN curl -sSL https://install.python-poetry.org | POETRY_HOME=/opt/poetry python && \
+    cd /usr/local/bin && \
+    ln -s /opt/poetry/bin/poetry && \
+    poetry config virtualenvs.create false
+COPY ./pyproject.toml /api_server
+COPY ./poetry.lock /api_server
+RUN poetry install
 
-RUN pip install 'uvicorn[standard]'
-
-
-# EXPOSE 8080
-# 
-COPY ./api_server /code/app
-WORKDIR /code/app
-
-CMD ["uvicorn", "main:app", "--proxy-headers", "--host", "0.0.0.0", "--port", "80"]
+CMD uvicorn api_server.main:app --proxy-headers --host 0.0.0.0 --port 8080

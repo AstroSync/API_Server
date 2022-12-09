@@ -81,16 +81,6 @@ async def satellites():
 #         return f'Error: {err}'
 
 
-# @router.get("/sessions")
-# async def sessions(sat_name: str, start_date: Union[date, str] = date.today(),
-#                    end_date: Union[date, str] = date.today()):
-#     print(f'sat_name: {sat_name}, start_date: {start_date}, end_date: {end_date}')
-#     session_list = get_sessions_for_sat(sat_name=sat_name, t1=start_date, t2=end_date)
-#     if session_list == ValueError:
-#         raise HTTPException(status_code=404, detail="Satellite name was not found.")
-#     return session_list
-
-
 @router.get("/json/{file_name}")
 async def get_json_file(file_name: str):
     try:
@@ -155,7 +145,8 @@ async def sessions(sat_name: str, start_date: Union[date, str] = date.today(),
                    end_date: Union[date, str] = date.today()):
     print(f'sat_name: {sat_name}, start_date: {start_date}, end_date: {end_date}')
     session_list: list[dict[str, Any]] = get_sessions_for_sat(sat_name=sat_name, observers=OBSERVERS,
-                                                              t_1=start_date, t_2=end_date)
+                                                              t_1=start_date, t_2=end_date, local_tle=False)
+    print(session_list)
     if session_list == ValueError:
         raise HTTPException(status_code=404, detail="Satellite name was not found.")
     return JSONResponse(content=session_list)

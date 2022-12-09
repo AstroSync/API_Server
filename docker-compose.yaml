@@ -1,0 +1,51 @@
+version: '3.8'
+services:
+  backend:
+    image: backend:latest
+    container_name: backend
+    build:
+      context: ./
+      dockerfile: backend.dockerfile
+    environment:
+      PROJECT_NAME: ${PROJECT_NAME?Variable not set}
+      DOMAIN: ${DOMAIN?Variable not set}
+      ANTENNA_URL: ${ANTENNA_URL?Variable not set}
+      MONGO_DB_PORT: ${MONGO_DB_PORT?Variable not set}
+      MONGO_DB_USERNAME: ${MONGO_DB_USERNAME?Variable not set}
+      MONGO_DB_PASSWORD: ${MONGO_DB_PASSWORD?Variable not set}
+      BACKEND_CORS_ORIGINS: ${BACKEND_CORS_ORIGINS?Variable not set}
+      AUTH_URL: ${AUTH_URL?Variable not set}
+      REALM: ${REALM?Variable not set}
+      CLIENT_ID: ${CLIENT_ID?Variable not set}
+    ports:
+      - 8080:8080
+    depends_on:
+      - "mongodb"
+    volumes:
+      - .:/api_server
+    # volumes:
+    #   - ./backend/Coordinator_backend:/code/app
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend.rule=Host(`${API_URL?Variable not set}`)"
+      - "traefik.http.routers.backend.entrypoints=https"
+      - "traefik.http.routers.backend.tls.certresolver=letsEncrypt"
+      - "traefik.http.routers.backend.tls=true"
+
+      - "traefik.http.routers.backend_redirect.entrypoints=http"
+      - "traefik.http.routers.backend_redirect.rule=hostregexp(`{host:.+}`)"
+      - "traefik.http.routers.backend_redirect.middlewares=https-redirect"
+
+      - "traefik.http.services.backend_service.loadbalancer.server.port=80"
+
+  mongodb:
+    image: mongo:4.4.6
+    container_name: mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_DB_USERNAME?Variable not set}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_DB_PASSWORD?Variable not set}
+    ports:
+      - ${MONGO_DB_PORT?Variable not set}:${MONGO_DB_PORT?Variable not set}
+    volumes:
+      - ./db:/data/db
+    command: mongod --quiet --logpath /dev/null

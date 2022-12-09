@@ -39,7 +39,7 @@ def get_sat_from_local_tle_file(name: str) -> Optional[EarthSatellite]:
 def request_celestrak_sat_tle(sat_name: str) -> EarthSatellite | None:
     start_time: float = time.time()
     try:
-        cubesat: EarthSatellite = load.tle_file(f"https://celestrak.org/NORAD/elements/gp.php?NAME={sat_name}")[0]
+        cubesat: EarthSatellite = load.tle_file(f"https://celestrak.org/NORAD/elements/gp.php?NAME={sat_name}".replace(' ', '%20'))[0]
     except IndexError:
         return None
     print(f"Tle loading took {time.time() - start_time} seconds")

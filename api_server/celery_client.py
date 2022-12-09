@@ -1,5 +1,6 @@
 # from datetime import datetime
 from __future__ import annotations
+import sys
 import time
 from celery import Celery, group, signature
 from api_server.sessions_store.session import Session
@@ -9,12 +10,20 @@ from api_server import celery_config
 print('Created celery app')
 
 host: str = '10.6.1.74' # 'localhost'
-celery_app: Celery = Celery('ground_station', broker=f'amqp://guest:guest@{host}:5672//',
-                            # backend="redis://localhost:6379/0",
-                            # backend='mongodb://root:rootpassword@astrosync.ru:27017/?authMechanism=DEFAULT',
-                            backend=f'mongodb://root:rootpassword@{host}:27017/?authMechanism=DEFAULT',
-                            # backend = 'db+postgresql+psycopg2://testkeycloakuser:testkeycloakpassword@postgres/testkeycloakdb',
-                            include=['ground_station.celery_tasks'])
+if sys.platform.startswith('win'):
+    celery_app: Celery = Celery('ground_station', broker=f'amqp://guest:guest@{host}:5672//',
+                                # backend="redis://localhost:6379/0",
+                                # backend='mongodb://root:rootpassword@astrosync.ru:27017/?authMechanism=DEFAULT',
+                                backend=f'mongodb://root:rootpassword@{host}:27017/?authMechanism=DEFAULT',
+                                # backend = 'db+postgresql+psycopg2://testkeycloakuser:testkeycloakpassword@postgres/testkeycloakdb',
+                                include=['ground_station.celery_tasks'])
+else:  # docker
+    celery_app = Celery('celery_worker', broker='amqp://guest:guest@localhost:5672//',
+                                # backend="redis://redis:6379/0",
+                                # backend='mongodb://root:rootpassword@astrosync.ru:27017/?authMechanism=DEFAULT',
+                                backend='mongodb://root:rootpassword@localhost:27017/?authMechanism=DEFAULT',
+                                # backend = 'db+postgresql+psycopg2://testkeycloakuser:testkeycloakpassword@postgres/testkeycloakdb',
+                                include=['ground_station.celery_tasks'])
 celery_app.config_from_object(celery_config)
 
 
