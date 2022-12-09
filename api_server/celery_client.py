@@ -1,14 +1,14 @@
 # from datetime import datetime
+from __future__ import annotations
 import time
-from celery import group, signature
+from celery import Celery, group, signature
 from api_server.sessions_store.session import Session
-# from api_server.celery_tasks import radio_task, rotator_task_emulation
-from celery import Celery
 from api_server import celery_config
+# from api_server.celery_tasks import radio_task, rotator_task_emulation
 
 print('Created celery app')
 
-host = '10.6.1.74' # 'localhost'
+host: str = '10.6.1.74' # 'localhost'
 celery_app: Celery = Celery('ground_station', broker=f'amqp://guest:guest@{host}:5672//',
                             # backend="redis://localhost:6379/0",
                             # backend='mongodb://root:rootpassword@astrosync.ru:27017/?authMechanism=DEFAULT',
