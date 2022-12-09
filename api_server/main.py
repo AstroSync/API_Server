@@ -1,4 +1,5 @@
 from __future__ import annotations
+import os
 # import sys
 import uvicorn
 from fastapi import FastAPI
@@ -6,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from api_server.routers import basic, websocket_api, schedule, radio, rotator
 
-with open("./api_description.md", "r", encoding='utf-8') as f:
+with open(os.path.join(os.path.dirname(__file__), "api_description.md"), "r", encoding='utf-8') as f:
     description = f.read()
 
 app: FastAPI = FastAPI(title="Coordinator server API")

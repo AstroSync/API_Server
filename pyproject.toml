@@ -6,7 +6,7 @@ authors = ["crinitusfeles <crinitusfeles@gmail.com>"]
 license = "MIT"
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.10"
 fastapi = "^0.79.0"
 python-multipart = "^0.0.5"
 pymongo = "^4.2.0"
