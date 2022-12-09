@@ -4,7 +4,7 @@ from typing import Any
 
 def get_sat_name_and_num(path: str) -> list[dict[str, Any]]:
     # read json file and find all OBJECT_NAME, OBJECT_ID, NORAD_CAT_ID
-    with open(path, 'r') as json_file:
+    with open(path, 'r', encoding='utf-8') as json_file:
         data = json.load(json_file)
         sat_name_and_num = []
         for obj in data:

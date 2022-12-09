@@ -64,9 +64,10 @@ class RotatorAxis(BaseModel):
 
 class RotatorModel(BaseModel):
     az: RotatorAxis
-    el: RotatorAxis = {'angle': 0, 'speed': 0.7, 'acceleration': 0.1, 'max_angle': 90, 'min_angle': 0}
+    el: RotatorAxis = RotatorAxis.parse_obj({'angle': 0, 'speed': 0.7, 'acceleration': 0.1,
+                                             'max_angle': 90, 'min_angle': 0})
 
 
-if __name__ == '__main__':
-    m = TaskModel()
-    print(m)
+# if __name__ == '__main__':
+#     m = TaskModel()
+#     print(m)
