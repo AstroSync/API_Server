@@ -9,7 +9,7 @@ class ConnectionManager:
         self.active_connections: dict[str, WebSocket] = {}
         self.message_boxes: dict[str, list[str]] = {}
         self._gs_id_list = ['NSU_GS', 'NSU_1A_GS']
-        self._gs_ip_list = ['10.6.1.74', '10.6.1.97', '127.0.0.1', 'localhost']
+        # self._gs_ip_list = ['10.6.1.74', '10.6.1.97', '127.0.0.1', 'localhost']
 
     async def send_stored_messages(self, websocket: WebSocket, client_id: str) -> None:
         stored_messages: list[str] | None = self.message_boxes.get(client_id, None)
