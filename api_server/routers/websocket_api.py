@@ -23,7 +23,7 @@ class ConnectionManager:
         await websocket.accept()
         print(f'connected {websocket.client}')
         if websocket.client is not None:
-            if client_id in self._gs_id_list and websocket.client.host not in self._gs_ip_list:
+            if client_id in self._gs_id_list: #and websocket.client.host not in self._gs_ip_list:
                 print(f'{websocket.client} tried to connect as ground station.')
                 await websocket.close(reason='Unknown api_server ip address')
                 print(f'disconnected {websocket.client}')

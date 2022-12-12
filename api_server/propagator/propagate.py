@@ -102,8 +102,8 @@ def map_events(event_type_list: list[int], event_time_list: list[Time], location
         elif event_type == 2:
             event_dict['finish_time'] = event_time.astimezone(timezone.utc)  # type: ignore
             event_dict['duration_sec'] = (event_dict['finish_time'] - event_dict['start_time']).seconds  # type: ignore
-            event_dict['finish_time'] = str(event_dict['finish_time'])
-            event_dict['start_time'] = str(event_dict['start_time'])
+            event_dict['finish_time'] = event_dict['finish_time'].isoformat(sep="\n", timespec="seconds") # type: ignore
+            event_dict['start_time'] = event_dict['start_time'].isoformat(sep="\n", timespec="seconds")  # type: ignore
             event_dict['station'] = location_name
             event_dict['status'] = 'Available'  # Неопределен
             event_dict_list.append(copy.copy(event_dict))

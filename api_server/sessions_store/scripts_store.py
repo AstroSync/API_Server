@@ -49,24 +49,24 @@ class UserStore(metaclass=Singleton):
         result: InsertOneResult = self.scripts.insert_one(script.dict(by_alias=True))
         return result.inserted_id
 
-    def download_script(self, script_id: UUID) -> UserScriptModel | None:
+    def get_script(self, script_id: UUID) -> UserScriptModel | None:
         result: dict | None = self.scripts.find_one({'_id': script_id})
         if result is not None:
             return UserScriptModel.parse_obj(result)
         return None
 
-    def download_users_scripts(self, user_id: UUID) -> list[UserScriptModel]:
+    def get_users_scripts(self, user_id: UUID) -> list[UserScriptModel]:
         return [UserScriptModel.parse_obj(data) for data in list(self.scripts.find({'user_id': user_id}))]
 
     def update_script(self, user_id: UUID, script_id: UUID, content: bytes):
         pass
 
     def delete_script(self, script_id: UUID) -> int:
-        result: DeleteResult = self.scripts.delete_one({'script_id': script_id})
+        result: DeleteResult = self.scripts.delete_one({'_id': script_id})
         return result.deleted_count
 
 script_store = UserStore('10.6.1.74', 'root', 'rootpassword')
 
 if __name__ == '__main__':
-    res = script_store.download_script(UUID('e32d478f-e305-4a74-94dc-47234d17d959'))
+    res = script_store.get_script(UUID('e32d478f-e305-4a74-94dc-47234d17d959'))
     print(res)

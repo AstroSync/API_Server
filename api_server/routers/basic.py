@@ -7,13 +7,14 @@ from datetime import date, datetime
 from tempfile import NamedTemporaryFile
 from typing import Any, Union
 from io import BytesIO, StringIO
-from uuid import UUID  #, uuid4
+from uuid import UUID
+from api_server import celery_client  #, uuid4
 from fastapi import APIRouter, HTTPException, UploadFile  #, Depends , UploadFile, File
 from fastapi.responses import JSONResponse, StreamingResponse  #, RedirectResponse,
 # from fastapi_keycloak import OIDCUser  #, UsernamePassword
 from pylint.lint import Run
 from pylint.reporters.text import TextReporter
-from api_server.models.api import RegisterSessionModel
+from api_server.models.api import RegisterSessionModel, UserScriptMeta
 #from api_server.database_api import db_add_user_script, db_register_new_session, get_all_sessions
 # from api_server.hardware.naku_device_api import device
 from api_server.models.db import UserScriptModel
@@ -41,18 +42,6 @@ async def root():
 async def satellites():
     return sat_names
 
-
-# class DateTimeEncoder(json.JSONEncoder):
-
-#     def default(self, obj):
-#         if isinstance(obj, (datetime.datetime, datetime.date, datetime.time)):
-#             return obj.isoformat()
-#         elif isinstance(obj, datetime.timedelta):
-#             return (datetime.datetime.min + obj).time().isoformat()
-
-#         return super(DateTimeEncoder, self).default(obj)
-
-
 # @brouter.post("/register_new_session")
 # async def register_new_session(data: RegisterSessionModel):
 #     try:
@@ -67,8 +56,6 @@ async def satellites():
 #         return result
 #     except Exception as err:
 #         return f'Error: {err}'
-
-
 # @router.get("/check_station")
 # async def check_station():
 #     try:
@@ -79,6 +66,14 @@ async def satellites():
 #         return result
 #     except Exception as err:
 #         return f'Error: {err}'
+@router.get("/scripts/{user_id}", response_model=list[UserScriptMeta])
+async def get_user_scripts_meta(user_id: UUID) -> list[UserScriptMeta]:
+    scripts: list[UserScriptModel] = script_store.get_users_scripts(user_id)
+    if len(scripts) > 0:
+        scripts_meta: list[UserScriptMeta] = [UserScriptMeta.parse_obj(script) for script in scripts]
+        return scripts_meta
+    else:
+        raise HTTPException(status_code=404, detail="Scripts not found.")
 
 
 @router.get("/json/{file_name}")
@@ -115,7 +110,8 @@ async def save_script(user_id: UUID, user_script: UploadFile, script_name: str, 
     file_copy.write(contents)  # copy the received file data into a new temp file.
     file_copy.seek(0)  # move to the beginning of the file
 
-    errors, fatal, details = pylint_check(f'{file_copy.name}')
+    errors, fatal, details = 0, 0, ''
+    # errors, fatal, details = pylint_check(f'{file_copy.name}')
     if not errors:
         print('SCRIPT OK')
         now: datetime = datetime.now().astimezone()
@@ -125,20 +121,44 @@ async def save_script(user_id: UUID, user_script: UploadFile, script_name: str, 
         script_store.save_script(scriptModel)
     else:
         print(f'{errors=}')
-    # os.remove(f'{prefix}_{user_script.filename}')
     file_copy.close()  # Remember to close any file instances before removing the temp file
     os.unlink(file_copy.name)  # unlink (remove) the file
-    #db_add_user_script(UserScriptModel(user_id=user_id, script_name=script_name, content=contents))
     return {"result": details, "errors": errors, "fatal": fatal}
 
 
-@router.get("/download_script")
-async def download_script(script_id: UUID) -> StreamingResponse:
-    model: UserScriptModel | None = script_store.download_script(script_id)
-    if model is None:
-        raise HTTPException(status_code=404, detail="Item not found")
-    return StreamingResponse(BytesIO(model.content))
+@router.post("/celery_check_script")
+async def celery_check_script(user_id: UUID, user_script: UploadFile, script_name: str, description: str = ''):
+    contents: bytes = await user_script.read()
 
+    errors, fatal, details = celery_client.celery_pylint_check(contents)
+
+    if not errors:
+        print('SCRIPT OK')
+        now: datetime = datetime.now().astimezone()
+        sha256: str = hashlib.sha256(contents).hexdigest()
+        scriptModel=UserScriptModel(user_id=user_id, username='username', script_name=script_name, description=description,
+                        content=contents, upload_date=now, last_edited_date=now, size=len(contents), sha256=sha256)
+        script_store.save_script(scriptModel)
+    else:
+        print(f'{errors=}')
+
+    return {"result": details, "errors": errors, "fatal": fatal}
+
+
+@router.get("/download_script/{script_id}", response_class=StreamingResponse)
+async def download_script(script_id: UUID) -> StreamingResponse:
+    model: UserScriptModel | None = script_store.get_script(script_id)
+    if model is None:
+        raise HTTPException(status_code=404, detail="Script not found")
+    return StreamingResponse(BytesIO(model.content), media_type='text/plain')
+
+@router.delete("/delete_script")
+async def delete_script(script_id: UUID) -> str:
+    count: int = script_store.delete_script(script_id)
+    print(f'{count=}')
+    if count == 0:
+        raise HTTPException(status_code=404, detail="Script not found")
+    return 'Deleted'
 
 @router.get("/sessions")
 async def sessions(sat_name: str, start_date: Union[date, str] = date.today(),
@@ -158,17 +178,6 @@ async def root_path(path: str):
     return {"message": path}
 
 
-SCRIPT = """
-import time
-print('Running user script')
-for i in range(50):
-    time.sleep(0.1
-    print(f'some processing {i}')
-print('User script completed')
-"""
-if __name__ == "__main__":
-    f = lambda: exec(compile(SCRIPT, "<string>", "exec"))
-    f()
 # frontend_server = True
 #
 #

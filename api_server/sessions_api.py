@@ -58,4 +58,4 @@ def get_my_satellites(user_id: UUID) -> list:
 
 
 if __name__ == '__main__':
-    print(register_sessions_test(duration=70))
+    print(register_sessions_test(duration=10))

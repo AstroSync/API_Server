@@ -1,4 +1,4 @@
-
+from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
@@ -49,6 +49,14 @@ class RotatorAxis(BaseModel):
     limits: bool = True
     # calibration: float
 
+class UserScriptMeta(BaseModel):
+    script_id: UUID
+    script_name: str
+    description: str = ''
+    upload_date: datetime
+    last_edited_date: datetime
+    size: int
+    sha256: str
 
 class RotatorModel(BaseModel):
     az: RotatorAxis
