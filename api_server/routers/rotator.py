@@ -33,19 +33,30 @@ async def set_random_angle():
     return {"az": f'{az:.2f}', 'el': f'{el:.2f}'}
 
 
-# @router.post("/set_speed")
-# async def set_speed(az_speed: float, el_speed: float):
-#     RotatorDriver().set_speed(az_speed, el_speed)
-#     return {"message": 'OK'}
+@router.post("/set_speed")
+async def set_speed(az_speed: float, el_speed: float):
+    celery_client.set_speed(az_speed, el_speed)
+    return {"message": 'OK'}
 
+@router.get("/config")
+async def get_config() -> dict[str, str]:
+    config: dict[str, str] = celery_client.get_config().get()  # type: ignore
+    print(config)
+    return config
 
 @router.get("/")
 async def get_position():
-    position: tuple[float, float] = celery_client.get_position()  # type: ignore
+    position: tuple[float, float] = celery_client.get_position().get()  # type: ignore
     print(position)
     return {"az": position[0], "el": position[1]}
 
+@router.get("/connect")
+async def connect():
+    return celery_client.connect().get()
 
+@router.get("/disconnect")
+async def disconnect():
+    return celery_client.disconnect().get()
 # @router.get("/condition")
 # async def get_condition():
 #     return RotatorDriver().rotator_model.__dict__

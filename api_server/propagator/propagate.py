@@ -3,10 +3,9 @@ from __future__ import annotations
 import copy
 import os
 import time
-from datetime import date, datetime, timedelta
-from typing import Any, Optional, Literal
-# from dateutil import parser
-from datetime import timezone
+from datetime import date, datetime, timedelta, timezone
+from typing import Any, Literal
+from pytz import utc
 from skyfield.api import load
 from skyfield.sgp4lib import EarthSatellite
 from skyfield.timelib import Time, Timescale
@@ -26,7 +25,7 @@ OBSERVERS: dict[str, GeographicPosition] = {'NSU': wgs84.latlon(54.842625, 83.09
 satellites: list[EarthSatellite] = load.tle_file(os.path.join(os.path.dirname(__file__), 'cubesat_tle.txt'))
 
 
-def get_sat_from_local_tle_file(name: str) -> Optional[EarthSatellite]:
+def get_sat_from_local_tle_file(name: str) -> EarthSatellite | None:
     start_time: float = time.time()
     try:
         cubesat: EarthSatellite = list(filter(lambda sat: sat.name == name, satellites))[0]
@@ -39,10 +38,12 @@ def get_sat_from_local_tle_file(name: str) -> Optional[EarthSatellite]:
 def request_celestrak_sat_tle(sat_name: str) -> EarthSatellite | None:
     start_time: float = time.time()
     try:
-        cubesat: EarthSatellite = load.tle_file(f"https://celestrak.org/NORAD/elements/gp.php?NAME={sat_name}".replace(' ', '%20'))[0]
+        url = f"https://celestrak.org/NORAD/elements/gp.php?NAME={sat_name}".replace(' ', '%20')
+        cubesat: EarthSatellite = load.tle_file(url, reload=True)[0]
     except IndexError:
         return None
     print(f"Tle loading took {time.time() - start_time} seconds")
+    print(f'cubesat: {cubesat}')
     return cubesat
 
 
@@ -69,7 +70,7 @@ def convert_time_args(t_1: date | str, t_2: date | str | None = None) -> tuple[T
         t_2_ts: Time = timescale.from_datetime(datetime.combine(t_2, datetime.max.time(), tzinfo=timezone.utc))
     else:
         t_2_ts: Time = timescale.from_datetime(datetime.combine(t_2, datetime.min.time(), tzinfo=timezone.utc))
-    t_1_ts: Time = timescale.from_datetime(datetime.combine(t_1, datetime.now().time(), tzinfo=timezone.utc))
+    t_1_ts: Time = timescale.from_datetime(datetime.combine(t_1, datetime.utcnow().time(), tzinfo=timezone.utc))
     return t_1_ts, t_2_ts
 
 
@@ -102,8 +103,8 @@ def map_events(event_type_list: list[int], event_time_list: list[Time], location
         elif event_type == 2:
             event_dict['finish_time'] = event_time.astimezone(timezone.utc)  # type: ignore
             event_dict['duration_sec'] = (event_dict['finish_time'] - event_dict['start_time']).seconds  # type: ignore
-            event_dict['finish_time'] = event_dict['finish_time'].isoformat(sep="\n", timespec="seconds") # type: ignore
-            event_dict['start_time'] = event_dict['start_time'].isoformat(sep="\n", timespec="seconds")  # type: ignore
+            event_dict['finish_time'] = str(event_dict['finish_time'])
+            event_dict['start_time'] = str(event_dict['start_time'])
             event_dict['station'] = location_name
             event_dict['status'] = 'Available'  # Неопределен
             event_dict_list.append(copy.copy(event_dict))
@@ -124,7 +125,7 @@ def events_for_observers(satellite: EarthSatellite, observers: dict, ts_1: Time,
 
 
 def get_sessions_for_sat(sat_name: str, observers: dict,
-                         t_1: date | str, t_2: Optional[date | str] = None, local_tle: bool = True) -> list[dict[str, Any]]:
+                         t_1: date | str, t_2: date | str | None = None, local_tle: bool = True) -> list[dict[str, Any]]:
     satellite: EarthSatellite | None = get_sat_from_local_tle_file(sat_name.upper()) if local_tle else request_celestrak_sat_tle(sat_name.upper())
     if satellite is None:
         raise ValueError
@@ -188,11 +189,21 @@ class TestSatellitePath:
         self.az_rate = np.ones(test_size)
         self.dist_rate = np.zeros(test_size)
         self.az_rotation_direction = 1
-        self.t_points = [datetime.now(tz=timezone.utc) + timedelta(seconds=6 + x) for x in range(test_size)]
+        self.t_points = [datetime.now().astimezone(utc) + timedelta(seconds=6 + x) for x in range(test_size)]
         self.__index: int = 0
     def __getitem__(self, key) -> tuple[float, float, datetime]:
         return (self.altitude.__getitem__(key), self.azimuth.__getitem__(key),
                self.t_points.__getitem__(key))
+
+    def __repr__(self) -> str:
+        return f'Altitude deg from {self.altitude[0]:.2f} to {self.altitude[-1]:.2f}\n' \
+               f'Azimuth deg from {self.azimuth[0]:.2f} to {self.azimuth[-1]:.2f}\n' \
+               f'Distance km from {self.dist.min():.2f} to {self.dist.max():.2f}\n' \
+               f'Altitude rate deg/s from {self.alt_rate.min():.2f} to {self.alt_rate.max():.2f}\n' \
+               f'Azimuth rate deg/s from {self.az_rate.min():.2f} to {self.az_rate.max():.2f}\n' \
+               f'Distance rate km/s from {self.dist_rate.min():.2f} to {self.dist_rate.max():.2f}\n' \
+               f'Time points: from {self.t_points[0]} to {self.t_points[-1]}.\n' \
+               f'Duration: {(self.t_points[-1] - self.t_points[0]).seconds} sec\n'
 
     def __iter__(self):
         return self

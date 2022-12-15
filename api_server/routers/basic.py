@@ -3,12 +3,14 @@ import hashlib
 import json
 
 import os
-from datetime import date, datetime
+from datetime import date, datetime  #, timedelta, timezone
 from tempfile import NamedTemporaryFile
 from typing import Any, Union
 from io import BytesIO, StringIO
 from uuid import UUID
-from api_server import celery_client  #, uuid4
+
+# from api_server.sessions_store.mongodb_controller import MongoStore
+# from api_server.sessions_store.session import Session  #, uuid4
 from fastapi import APIRouter, HTTPException, UploadFile  #, Depends , UploadFile, File
 from fastapi.responses import JSONResponse, StreamingResponse  #, RedirectResponse,
 # from fastapi_keycloak import OIDCUser  #, UsernamePassword
@@ -17,9 +19,10 @@ from pylint.reporters.text import TextReporter
 from api_server.models.api import RegisterSessionModel, UserScriptMeta
 #from api_server.database_api import db_add_user_script, db_register_new_session, get_all_sessions
 # from api_server.hardware.naku_device_api import device
+from api_server import celery_client
 from api_server.models.db import UserScriptModel
 from api_server.propagator.celestrak_api import get_sat_name_and_num
-from api_server.propagator.propagate import OBSERVERS, get_sessions_for_sat
+from api_server.propagator.propagate import OBSERVERS, SatellitePath, angle_points_for_linspace_time, get_sessions_for_sat
 from api_server.sessions_store.scripts_store import script_store
 # from api_server.keycloak import idp
 
@@ -130,7 +133,7 @@ async def save_script(user_id: UUID, user_script: UploadFile, script_name: str, 
 async def celery_check_script(user_id: UUID, user_script: UploadFile, script_name: str, description: str = ''):
     contents: bytes = await user_script.read()
 
-    errors, fatal, details = celery_client.celery_pylint_check(contents)
+    errors, fatal, details = celery_client.celery_pylint_check(contents).get()
 
     if not errors:
         print('SCRIPT OK')
@@ -161,16 +164,29 @@ async def delete_script(script_id: UUID) -> str:
     return 'Deleted'
 
 @router.get("/sessions")
-async def sessions(sat_name: str, start_date: Union[date, str] = date.today(),
-                   end_date: Union[date, str] = date.today()):
+async def sessions(sat_name: str, start_date: Union[date, str] = datetime.utcnow().date(),
+                   end_date: Union[date, str] = datetime.utcnow().date()):
     print(f'sat_name: {sat_name}, start_date: {start_date}, end_date: {end_date}')
     session_list: list[dict[str, Any]] = get_sessions_for_sat(sat_name=sat_name, observers=OBSERVERS,
-                                                              t_1=start_date, t_2=end_date, local_tle=False)
+                                                              t_1=start_date, t_2=end_date, local_tle=True)
     print(session_list)
+    # schedule_list = MongoStore('10.6.1.74', 'root', 'rootpassword', Session).get_schedule()
+    # for scheduled_session in schedule_list:
+    #     for session in session_list:
+    #         if session['']
     if session_list == ValueError:
         raise HTTPException(status_code=404, detail="Satellite name was not found.")
     return JSONResponse(content=session_list)
 
+@router.get("/calculate_angles")
+async def calculate_angles(sat: str, t_1: datetime, t_2: datetime):
+    path: SatellitePath = angle_points_for_linspace_time(sat, 'NSU', t_1, t_2)
+    print(path.__repr__)
+    return path.__repr__()
+
+@router.get("/celery_calculate_angles")
+async def celery_calculate_angles(sat: str, t_1: datetime, t_2: datetime):
+    return celery_client.celery_calculate_angles(sat, t_1, t_2).get()
 
 @router.get("/{path:path}")
 async def root_path(path: str):

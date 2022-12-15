@@ -15,7 +15,15 @@ from api_server.sessions_store.time_range import TimeRange
 from api_server.sessions_store.time_range_store import TimeRangesStore
 
 
-class MongoStore(TimeRangesStore):
+class Singleton(type):
+    _instances: dict = {}
+
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+        return cls._instances[cls]
+
+class MongoStore(TimeRangesStore, metaclass=Singleton):
     def __init__(self, host: str, username: str, password: str, collection_type: Type[TimeRange]) -> None:
         super().__init__()
         try:

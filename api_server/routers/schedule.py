@@ -21,8 +21,8 @@ async def register_sessions(new_sessions: list[RegisterSessionModel]):
 
 
 @router.post('/register_sessions_test')
-async def register_sessions_test(start_time: datetime = datetime.now() + timedelta(seconds=6), duration_sec: int = 10):
-    sessions_api.register_sessions_test(start_time, duration_sec)
+async def register_sessions_test(data_list: list[tuple[datetime, int]] = [(datetime.now() + timedelta(seconds=6), 10)]):
+    sessions_api.register_sessions_test(data_list)
     return {"message": "OK"}
 
 # @router.get('/get_pending_tasks')

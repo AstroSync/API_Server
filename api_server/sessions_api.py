@@ -1,6 +1,9 @@
 from __future__ import annotations
 from datetime import datetime, timedelta
-from uuid import UUID  #, uuid4
+from multiprocessing.pool import ApplyResult
+from uuid import UUID
+
+from pytz import utc  #, uuid4
 from api_server.celery_client import celery_register_session, celery_register_session_test
 from api_server.models.api import RegisterSessionModel
 from api_server.sessions_store.session import Session
@@ -14,22 +17,24 @@ store = MongoStore('10.6.1.74', 'root', 'rootpassword', Session)
 def register_sessions(new_sessions: list[RegisterSessionModel]):
     sessions: list[Session] = [Session(**session.dict()) for session in new_sessions]
     store.append(*sessions)
-    async_result = [celery_register_session(session) for session in sessions]
-    return async_result
+    # регистрировать только после анализа расписания
+    async_results = [celery_register_session(session) for session in sessions]
+    return [result.forget() for result in async_results] # type: ignore
 
 
-def register_sessions_test(start_time: datetime = datetime.now() + timedelta(seconds=6), duration: int = 10):
-    new_sessions = [RegisterSessionModel(user_id=UUID('388c01db-52a2-4192-9d6e-131958ea9e3a'),
-                                        script_id=UUID('6e867ffa-264f-49a7-a58b-71de451f1c49'),
-                                        username='kek',
-                                        sat_name='NORBI',
-                                        priority=1,
-                                        start=start,
-                                        duration_sec=duration) for start in [start_time, start_time + timedelta(seconds=duration + 80)]]
+def register_sessions_test(data_list: list[tuple[datetime, int]] = [(datetime.now(utc) + timedelta(seconds=6), 10)]):
+    new_sessions: list = [RegisterSessionModel(user_id=UUID('19381611-6cc5-4635-bb05-2d71ae341fcb'),
+                                               script_id=UUID('cee1a05d-fe18-4334-b40c-146eb7dc92b9'),
+                                               username='kek',
+                                               sat_name='NORBI',
+                                               priority=1,
+                                               start=data[0],
+                                               duration_sec=data[1]) for data in data_list]
     sessions: list[Session] = [Session(**session.dict()) for session in new_sessions]
-    store.append(*sessions)
-    async_result = [celery_register_session_test(session) for session in sessions]
-    return async_result
+
+    # store.append(*sessions)
+    async_results: list[ApplyResult] = [celery_register_session_test(session) for session in sessions]
+    return [result.forget() for result in async_results]  # type: ignore
 
 
 def cancel_sessions(sessions_id_list: list[UUID]) -> None:
@@ -58,4 +63,4 @@ def get_my_satellites(user_id: UUID) -> list:
 
 
 if __name__ == '__main__':
-    print(register_sessions_test(duration=10))
+    print(register_sessions_test())

@@ -22,12 +22,12 @@ class ConnectionManager:
     async def connect(self, websocket: WebSocket, client_id: str) -> None:
         await websocket.accept()
         print(f'connected {websocket.client}')
-        if websocket.client is not None:
-            if client_id in self._gs_id_list: #and websocket.client.host not in self._gs_ip_list:
-                print(f'{websocket.client} tried to connect as ground station.')
-                await websocket.close(reason='Unknown api_server ip address')
-                print(f'disconnected {websocket.client}')
-                return
+        # if websocket.client is not None:
+        #     if client_id in self._gs_id_list and websocket.client.host not in self._gs_ip_list:
+        #         print(f'{websocket.client} tried to connect as ground station.')
+        #         await websocket.close(reason='Unknown api_server ip address')
+        #         print(f'disconnected {websocket.client}')
+        #         return
         self.active_connections.update({f'{client_id}': websocket})
         await self.send_stored_messages(websocket, client_id)
 
@@ -56,6 +56,7 @@ manager: ConnectionManager = ConnectionManager()
 @router.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: str) -> None:
     await manager.connect(websocket, client_id)
+    print(f'ws client connected {client_id}')
     try:
         while True:
             data: str = await websocket.receive_text()
