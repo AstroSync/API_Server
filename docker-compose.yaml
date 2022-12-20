@@ -17,6 +17,7 @@ services:
       AUTH_URL: ${AUTH_URL?Variable not set}
       REALM: ${REALM?Variable not set}
       CLIENT_ID: ${CLIENT_ID?Variable not set}
+      API_PORT: ${API_PORT?Variable not set}
     # ports:
     #   - 8082:8080
     depends_on:
@@ -39,7 +40,7 @@ services:
       - "traefik.http.routers.backend_redirect.middlewares=https-redirect"
 
       - "traefik.http.services.backend_service.loadbalancer.passhostheader=true"
-      - "traefik.http.services.backend_service.loadbalancer.server.port=8082"
+      - "traefik.http.services.backend_service.loadbalancer.server.port=${API_PORT?Variable not set}"
 
   mongodb:
     image: mongo:4.4.6
