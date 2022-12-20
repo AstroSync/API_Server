@@ -12,7 +12,9 @@ from api_server.sessions_store.mongodb_controller import MongoStore
 # from api_server.celery_client import celery_app
 
 host: str = os.environ.get('GS_ADDR', '10.6.1.74')
-store = MongoStore(host, 'root', 'rootpassword', Session)
+mongo_username = os.environ.get('MONGO_DB_USERNAME', 'root')
+mongo_pass = os.environ.get('MONGO_DB_PASSWORD', 'rootpassword')
+store = MongoStore(host, mongo_username, mongo_pass, Session)
 
 
 def register_sessions(new_sessions: list[RegisterSessionModel]):
