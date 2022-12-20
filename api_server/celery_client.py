@@ -1,9 +1,8 @@
-# from datetime import datetime
 from __future__ import annotations
 from datetime import datetime
 from multiprocessing.pool import AsyncResult
+import os
 # import sys
-import time
 from celery import Celery  #, group, signature
 from api_server.sessions_store.session import Session
 from api_server import celery_config
@@ -11,7 +10,7 @@ from api_server import celery_config
 
 print('Created celery app')
 
-host: str = '10.6.1.74' # 'localhost'
+host: str = os.environ.get('GS_ADDR', '10.6.1.74')#'10.6.1.74' # 'localhost' # 'localhost'
 # if sys.platform.startswith('win'):
 celery_app: Celery = Celery('ground_station',
                             broker=f'redis://{host}:6379/0',
@@ -29,7 +28,7 @@ celery_app: Celery = Celery('ground_station',
 #                                 # backend = 'db+postgresql+psycopg2://testkeycloakuser:testkeycloakpassword@postgres/testkeycloakdb',
 #                                 include=['ground_station.celery_tasks'])
 celery_app.config_from_object(celery_config)
-
+celery_inspector = celery_app.control.inspect()
 
 def celery_register_session(model: Session) -> AsyncResult:
     soft_time_limit: float = model.duration_sec + 3.0
@@ -75,6 +74,24 @@ def celery_register_session_test(model: Session) -> AsyncResult:
                                                                           eta=model.start,
                                                                           soft_time_limit=soft_time_limit,
                                                                           time_limit=time_limit)
+# def format_datetime_task(db_task: dict):
+#     if len(db_task['celery@NSU']):
+#         for task in db_task['celery@NSU']:
+#             task['request']['kwargs']['start'] = datetime.fromisoformat(task['request']['kwargs']['start']).isoformat(' ', 'seconds')
+#         return db_task['celery@NSU']
+#     return []
+
+def get_active_tasks() -> dict:
+    return celery_inspector.active()
+
+def get_scheduled_tasks() -> dict:
+    return celery_inspector.scheduled()
+
+def get_reserved_tasks() -> dict:
+    return celery_inspector.reserved()
+
+def get_revoked_tasks() -> dict:
+    return celery_inspector.revoked()
 
 def celery_calculate_angles(sat: str, t_1: datetime, t_2: datetime) -> AsyncResult:
     return celery_app.send_task('ground_station.celery_tasks.calculate_angles', args=(sat, t_1, t_2))
@@ -82,7 +99,7 @@ def celery_calculate_angles(sat: str, t_1: datetime, t_2: datetime) -> AsyncResu
 def connect() -> AsyncResult:
     return celery_app.send_task('ground_station.celery_tasks.connect_naku')
 
-def disconnect():
+def disconnect() -> AsyncResult:
     return celery_app.send_task('ground_station.celery_tasks.disconnect_naku')
 
 def get_position() -> AsyncResult:
@@ -114,9 +131,10 @@ if __name__ == '__main__':
     # print(register_session(data).get())
     # print(connect())
     # print(Model.parse_obj(get_position().get()))
-    print(set_angle(70, 0).get())
-    time.sleep(2)
-    print(get_position().get())
+    # print(set_angle(70, 0).get())
+    # time.sleep(2)
+    # print(get_position().get())
+    get_scheduled_tasks()
     # print(celery_app.control.purge())
     # print(celery_app.control.broadcast('purge', destination=['NSU']))
     # while True:

@@ -72,7 +72,7 @@ async def websocket_gs_endpoint(websocket: WebSocket, gs_id: str, user_id: str) 
     await manager.connect(websocket, gs_id)
     if websocket.client_state.name == 'CONNECTED':
         print(f"Start session on #{gs_id} for {user_id} user.")
-        await manager.send_message_to_id(message='start_session', target_id=user_id)
+        # await manager.send_message_to_id(message='start_session', target_id=user_id)
         try:
             while True:
                 data: str = await websocket.receive_text()
@@ -81,3 +81,14 @@ async def websocket_gs_endpoint(websocket: WebSocket, gs_id: str, user_id: str) 
         except WebSocketDisconnect:
             manager.disconnect(websocket, gs_id)
             print(f"Client #{gs_id} left the chat")
+
+
+@router.get("/message_boxes")
+async def get_message_boxes():
+    return manager.message_boxes
+
+
+@router.get("/active_connections")
+async def get_active_connections():
+    users = list(manager.active_connections.keys())
+    return users

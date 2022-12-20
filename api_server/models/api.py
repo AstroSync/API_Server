@@ -25,7 +25,7 @@ class RegisterSessionModel(BaseModel):
     """
     user_id: UUID
     username: str
-    script_id: UUID
+    script_id: UUID | None
     sat_name: str
     priority: int
     start: datetime
@@ -57,6 +57,11 @@ class UserScriptMeta(BaseModel):
     last_edited_date: datetime
     size: int
     sha256: str
+    class Config:
+        json_encoders = {
+            # custom output conversion for datetime
+            datetime: lambda dt: dt.isoformat(' ', 'seconds')
+        }
 
 class RotatorModel(BaseModel):
     az: RotatorAxis

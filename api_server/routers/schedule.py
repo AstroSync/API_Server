@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from uuid import UUID
 from fastapi import APIRouter
 
 from api_server.models.api import RegisterSessionModel
@@ -24,6 +25,7 @@ async def register_sessions(new_sessions: list[RegisterSessionModel]):
 async def register_sessions_test(data_list: list[tuple[datetime, int]] = [(datetime.now() + timedelta(seconds=6), 10)]):
     sessions_api.register_sessions_test(data_list)
     return {"message": "OK"}
+
 
 # @router.get('/get_pending_tasks')
 # async def get_pending_tasks(user_id: int):

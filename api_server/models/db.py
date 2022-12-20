@@ -25,6 +25,11 @@ class UserScriptModel(BaseModel):
     last_edited_date: datetime
     size: int
     sha256: str
+    class Config:
+        json_encoders = {
+            # custom output conversion for datetime
+            datetime: lambda dt: dt.isoformat(' ', 'seconds')
+        }
 
 class SessionModel(BaseModel):
     user_id: UUID
@@ -44,9 +49,14 @@ class SessionModel(BaseModel):
     parts: int
     initial_start: datetime
     initial_duration_sec: int
-
+    class Config:
+        json_encoders = {
+            # custom output conversion for datetime
+            datetime: lambda dt: dt.isoformat(' ', 'seconds')
+        }
 class ResultSessionModel(BaseModel):
     user_id: UUID
+    status: str
     username: str
     script_id: UUID | None
     sat_name: str
@@ -57,6 +67,11 @@ class ResultSessionModel(BaseModel):
     priority: int
     result: list = []
     traceback: str = ''
+    class Config:
+        json_encoders = {
+            # custom output conversion for datetime
+            datetime: lambda dt: dt.isoformat(' ', 'seconds')
+        }
 
 class TimeRangeModel(BaseModel):
     _id: UUID = Field(..., alias="_id")

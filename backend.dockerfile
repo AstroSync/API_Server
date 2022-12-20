@@ -14,4 +14,4 @@ COPY ./pyproject.toml /api_server
 COPY ./poetry.lock /api_server
 RUN poetry install
 
-CMD uvicorn api_server.main:app --proxy-headers --host 0.0.0.0 --port 8080
+CMD python3 -m api_server

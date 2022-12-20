@@ -1,6 +1,9 @@
 from __future__ import annotations
+import os
 # from datetime import datetime, timedelta
 from uuid import UUID
+
+from bson import CodecOptions, UuidRepresentation
 from pymongo import MongoClient, ASCENDING
 from pymongo.database import Database
 from pymongo.collection import Collection
@@ -18,16 +21,20 @@ class Singleton(type):
 
 
 class UserStore(metaclass=Singleton):
-    def __init__(self, host: str, username: str, password: str) -> None:
+    def __init__(self) -> None:
         super().__init__()
         try:
+            host: str =  os.environ.get('GS_ADDR', '10.6.1.74')
+            username: str = os.environ.get('MONGO_USERNAME', 'root')
+            password: str = os.environ.get('MONGO_PASS', 'rootpassword')
+
             client: MongoClient = MongoClient(host=host, port=27017, username=username, uuidRepresentation='standard',
                                               password=password, authMechanism='DEFAULT',
                                               serverSelectionTimeoutMS=2000)
             db: Database = client['UserData']
             print("Connected to MongoDB")
-            self.scripts: Collection = db['scripts']
-            self.sessions: Collection = db['sessions']
+            self.scripts: Collection = db.get_collection('scripts', codec_options=CodecOptions(tz_aware=True, uuid_representation=UuidRepresentation.STANDARD))
+            self.sessions: Collection = db.get_collection('sessions', codec_options=CodecOptions(tz_aware=True, uuid_representation=UuidRepresentation.STANDARD))
             self.scripts.create_index([( "user_id", ASCENDING )])
         except TimeoutError as e:
             print(f'Database connection failed: {e}')
@@ -43,7 +50,7 @@ class UserStore(metaclass=Singleton):
         return None
 
     def get_session_result_by_user(self, user_id: UUID) -> list[ResultSessionModel]:
-        return [ResultSessionModel.parse_obj(result) for result in list(self.sessions.find({'_id': user_id}))]
+        return [ResultSessionModel.parse_obj(result) for result in list(self.sessions.find({'user_id': user_id}))]
 
     def save_script(self, script: UserScriptModel):
         result: InsertOneResult = self.scripts.insert_one(script.dict(by_alias=True))
@@ -65,8 +72,6 @@ class UserStore(metaclass=Singleton):
         result: DeleteResult = self.scripts.delete_one({'_id': script_id})
         return result.deleted_count
 
-script_store = UserStore('10.6.1.74', 'root', 'rootpassword')
-
 if __name__ == '__main__':
-    res = script_store.get_script(UUID('e32d478f-e305-4a74-94dc-47234d17d959'))
+    res = UserStore().get_script(UUID('e32d478f-e305-4a74-94dc-47234d17d959'))
     print(res)

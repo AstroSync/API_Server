@@ -1,6 +1,7 @@
 from __future__ import annotations
 from datetime import datetime, timedelta
 from multiprocessing.pool import ApplyResult
+import os
 from uuid import UUID
 
 from pytz import utc  #, uuid4
@@ -10,8 +11,8 @@ from api_server.sessions_store.session import Session
 from api_server.sessions_store.mongodb_controller import MongoStore
 from api_server.celery_client import celery_app
 
-
-store = MongoStore('10.6.1.74', 'root', 'rootpassword', Session)
+host: str = os.environ.get('GS_ADDR', '10.6.1.74')
+store = MongoStore(host, 'root', 'rootpassword', Session)
 
 
 def register_sessions(new_sessions: list[RegisterSessionModel]):

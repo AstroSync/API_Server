@@ -1,6 +1,6 @@
 from __future__ import annotations
-from api_server import celery_client
 from fastapi import APIRouter
+from api_server import celery_client
 from api_server.models.db import LoRaConfig, FSK_Config
 
 router = APIRouter(prefix="/radio", tags=["Radio"])
