@@ -9,7 +9,7 @@ router = APIRouter(prefix="/radio", tags=["Radio"])
 @router.post("/set_config")
 async def radio_config(config: LoRaConfig | FSK_Config):
     #gs_device.radio.set_config(radio_config)
-    return {"message": "OK"}
+    return config
 
 
 @router.post("/send_msg")

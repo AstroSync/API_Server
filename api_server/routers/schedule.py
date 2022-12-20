@@ -1,5 +1,5 @@
+from __future__ import annotations
 from datetime import datetime, timedelta
-from uuid import UUID
 from fastapi import APIRouter
 
 from api_server.models.api import RegisterSessionModel
@@ -22,7 +22,9 @@ async def register_sessions(new_sessions: list[RegisterSessionModel]):
 
 
 @router.post('/register_sessions_test')
-async def register_sessions_test(data_list: list[tuple[datetime, int]] = [(datetime.now() + timedelta(seconds=6), 10)]):
+async def register_sessions_test(data_list: list[tuple[datetime, int]] | None = None):
+    if data_list is None:
+        data_list = [(datetime.now() + timedelta(seconds=6), 10)]
     sessions_api.register_sessions_test(data_list)
     return {"message": "OK"}
 

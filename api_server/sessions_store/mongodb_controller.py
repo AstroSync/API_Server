@@ -1,6 +1,8 @@
 from copy import deepcopy
 from datetime import datetime, timedelta
 from typing import Type
+
+from bson import CodecOptions, UuidRepresentation
 # from zoneinfo import ZoneInfo
 # import uuid
 # from devtools import debug
@@ -30,12 +32,13 @@ class MongoStore(TimeRangesStore, metaclass=Singleton):
             client: MongoClient = MongoClient(host=host, port=27017, username=username, uuidRepresentation='standard',
                                               password=password, authMechanism='DEFAULT',
                                               serverSelectionTimeoutMS=2000, tz_aware=True)
-            db: Database = client['TimeRanges']
+            db: Database = client.get_database('TimeRanges')
             print("Connected to MongoDB")
             self.collection_type: Type[TimeRange] = collection_type
-            self.db_origin_ranges: Collection = db['origin_ranges']
-            self.db_prev_merge: Collection = db['prev_merge']
-            self.db_schedule: Collection = db['schedule']
+            codec_options = CodecOptions(tz_aware=True, uuid_representation=UuidRepresentation.STANDARD)
+            self.db_origin_ranges: Collection = db.get_collection('origin_ranges', codec_options=codec_options)
+            self.db_prev_merge: Collection = db.get_collection('prev_merge', codec_options=codec_options)
+            self.db_schedule: Collection = db.get_collection('schedule', codec_options=codec_options)
 
             self.db_origin_ranges.create_index([( "finish", ASCENDING )], expireAfterSeconds=10)
             self.db_prev_merge.create_index([( "finish", ASCENDING )], expireAfterSeconds=10)

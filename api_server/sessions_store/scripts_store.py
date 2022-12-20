@@ -33,8 +33,9 @@ class UserStore(metaclass=Singleton):
                                               serverSelectionTimeoutMS=2000)
             db: Database = client['UserData']
             print("Connected to MongoDB")
-            self.scripts: Collection = db.get_collection('scripts', codec_options=CodecOptions(tz_aware=True, uuid_representation=UuidRepresentation.STANDARD))
-            self.sessions: Collection = db.get_collection('sessions', codec_options=CodecOptions(tz_aware=True, uuid_representation=UuidRepresentation.STANDARD))
+            codec_options = CodecOptions(tz_aware=True, uuid_representation=UuidRepresentation.STANDARD)
+            self.scripts: Collection = db.get_collection('scripts', codec_options=codec_options)
+            self.sessions: Collection = db.get_collection('sessions', codec_options=codec_options)
             self.scripts.create_index([( "user_id", ASCENDING )])
         except TimeoutError as e:
             print(f'Database connection failed: {e}')
