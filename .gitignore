@@ -5,6 +5,7 @@
 *.txt
 .venv*
 .history
+.env
 db
 __pycache__/
 __pycache__

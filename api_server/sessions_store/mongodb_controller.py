@@ -1,5 +1,6 @@
 from copy import deepcopy
 from datetime import datetime, timedelta
+import os
 from typing import Type
 
 from bson import CodecOptions, UuidRepresentation
@@ -108,7 +109,7 @@ class MongoStore(TimeRangesStore, metaclass=Singleton):
 #     return TimeRange(**tr)
 
 if __name__ == '__main__':
-    controller: MongoStore = MongoStore('10.6.1.74', 'root', 'rootpassword', Session)
+    controller: MongoStore = MongoStore(os.environ.get('GS_ADDR', '10.6.1.74'), 'root', 'rootpassword', Session)
     # start_time: datetime = datetime.utcnow() + timedelta(seconds=60)
     start_time: datetime = datetime.now().astimezone() + timedelta(seconds=60)
     # start_time: datetime = datetime(2011, 12, 1, 1, 1, 1)
