@@ -19,28 +19,13 @@ services:
       CLIENT_ID: ${CLIENT_ID?Variable not set}
       API_PORT: ${API_PORT?Variable not set}
     ports:
-      - 8086:8080
+      - 8083:8080
     depends_on:
       - "mongodb"
     volumes:
       - .:/api_server
     networks:
       - webserver_default
-    # volumes:
-    #   - ./backend/Coordinator_backend:/code/app
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.backend.rule=Host(`${API_URL?Variable not set}`)"
-      - "traefik.http.routers.backend.entrypoints=https"
-      - "traefik.http.routers.backend.tls.certresolver=letsEncrypt"
-      - "traefik.http.routers.backend.tls=true"
-
-      - "traefik.http.routers.backend_redirect.entrypoints=http"
-      - "traefik.http.routers.backend_redirect.rule=hostregexp(`{host:.+}`)"
-      - "traefik.http.routers.backend_redirect.middlewares=https-redirect"
-
-      - "traefik.http.services.backend_service.loadbalancer.passhostheader=true"
-      - "traefik.http.services.backend_service.loadbalancer.server.port=8086"
 
   mongodb:
     image: mongo:4.4.6
