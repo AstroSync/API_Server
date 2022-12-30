@@ -23,6 +23,8 @@ flower = "^1.2.0"
 fastapi-keycloak = "^1.0.7"
 websockets = "^10.4"
 websocket-client = "^1.4.2"
+pandas = "^1.5.2"
+xlrd = "^2.0.1"
 
 [tool.poetry.dev-dependencies]
 autopep8 = "^1.7.0"
