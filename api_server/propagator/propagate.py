@@ -4,7 +4,7 @@ import copy
 import os
 import time
 from datetime import date, datetime, timedelta, timezone
-from typing import Any, Literal
+from typing import Literal
 from pytz import utc
 from skyfield.api import load
 from skyfield.sgp4lib import EarthSatellite
@@ -28,7 +28,8 @@ satellites: list[EarthSatellite] = load.tle_file(os.path.join(os.path.dirname(__
 def get_sat_from_local_tle_file(name: str) -> EarthSatellite | None:
     start_time: float = time.time()
     try:
-        cubesat: EarthSatellite = list(filter(lambda sat: sat.name == name, satellites))[0]
+        # cubesat: EarthSatellite = list(filter(lambda sat: sat.name == name, satellites))[0]
+        cubesat: EarthSatellite = [sat for sat in satellites if sat.name == name][0]
     except IndexError:
         return None
     print(f"Tle loading took {time.time() - start_time} seconds")
@@ -38,7 +39,7 @@ def get_sat_from_local_tle_file(name: str) -> EarthSatellite | None:
 def request_celestrak_sat_tle(sat_name: str) -> EarthSatellite | None:
     start_time: float = time.time()
     try:
-        url = f"https://celestrak.org/NORAD/elements/gp.php?NAME={sat_name}".replace(' ', '%20')
+        url: str = f"https://celestrak.org/NORAD/elements/gp.php?NAME={sat_name}".replace(' ', '%20')
         cubesat: EarthSatellite = load.tle_file(url, reload=True)[0]
     except IndexError:
         return None
@@ -74,7 +75,7 @@ def convert_time_args(t_1: date | str, t_2: date | str | None = None) -> tuple[T
     return t_1_ts, t_2_ts
 
 
-def skip_events_until_start(event_type_list: list[int], event_time_list: list[Time]) -> tuple[list[int], list[Time]]:
+def skip_events_until_start(event_type_list: list[int], event_time_list: Time) -> tuple[list[int], Time]:
     """Some times propagation may start at moment, when the satellite already at observation point.
     We will skip this session and wait next.
 
@@ -86,18 +87,20 @@ def skip_events_until_start(event_type_list: list[int], event_time_list: list[Ti
     Returns:
         tuple[list[int], list[Time]]: Event list without already running session.
     """
+    new_event_type_list: list[int] = event_type_list
+    new_event_time_list: Time = event_time_list
     while event_type_list[0] != 0:
-        event_type_list = event_type_list[1:]
-        event_time_list = event_time_list[1:]
+        new_event_type_list = event_type_list[1:]
+        new_event_time_list = event_time_list[1:]
         if len(event_type_list) == 0:
             break
-    return event_type_list, event_time_list
+    return new_event_type_list, new_event_time_list
 
 
-def map_events(event_type_list: list[int], event_time_list: list[Time], location_name: str):
+def map_events(event_type_list: list[int], event_time_list: Time, location_name: str) -> list[dict]:
     event_dict: dict[str, datetime | int | str] = {}
     event_dict_list: list[dict[str, datetime | int | str]] = []
-    for event_type, event_time in zip(event_type_list, event_time_list):
+    for event_type, event_time in zip(event_type_list, event_time_list):  # type: ignore
         if event_type == 0:
             event_dict['start_time'] = event_time.astimezone(timezone.utc)  # type: ignore
         elif event_type == 2:
@@ -111,32 +114,41 @@ def map_events(event_type_list: list[int], event_time_list: list[Time], location
     return event_dict_list
 
 
-def events_for_observers(satellite: EarthSatellite, observers: dict, ts_1: Time, ts_2: Time):
+def events_for_observers(satellite: EarthSatellite, observers: dict, ts_1: Time, ts_2: Time) -> tuple[dict, list[dict]]:
     events_list_for_all_observers: dict[str, list[dict[str, datetime | int | str]]] = {}
+    event_dict_list: list[dict] = []
     for location_name, observer in observers.items():
-        event_time_list, event_type_list = satellite.find_events(observer, ts_1, ts_2, altitude_degrees=3)
+        sat_events: tuple[Time, list[int]] = satellite.find_events(observer, ts_1, ts_2, altitude_degrees=3)  # type: ignore
+        event_type_list: list[int] = sat_events[1]
+        event_time_list: Time = sat_events[0]
         if len(event_type_list) > 1:  # there is at least one available session
             event_type_list, event_time_list = skip_events_until_start(event_type_list, event_time_list)
             if len(event_type_list) == 0:
                 continue
-            event_dict_list = map_events(event_type_list, event_time_list, location_name)
+            event_dict_list: list[dict] = map_events(event_type_list, event_time_list, location_name)
             events_list_for_all_observers[location_name] = event_dict_list
-    return events_list_for_all_observers
+    return events_list_for_all_observers, event_dict_list
 
 
-def get_sessions_for_sat(sat_name: str, observers: dict,
-                         t_1: date | str, t_2: date | str | None = None, local_tle: bool = True) -> list[dict[str, Any]]:
-    satellite: EarthSatellite | None = get_sat_from_local_tle_file(sat_name.upper()) if local_tle else request_celestrak_sat_tle(sat_name.upper())
+def get_sessions_for_sat(sat_name: str, observers: dict, t_1: date | str, t_2: date | str | None = None,
+                         local_tle: bool = True) -> tuple[list[dict], dict[str, list[dict]]]:
+    if local_tle:
+        satellite: EarthSatellite | None = get_sat_from_local_tle_file(sat_name.upper())
+    else:
+        satellite = request_celestrak_sat_tle(sat_name.upper())
+
     if satellite is None:
         raise ValueError
+
     start_time: float = time.time()
     ts_1, ts_2 = convert_time_args(t_1, t_2)
-    events_list_for_all_observers = events_for_observers(satellite, observers, ts_1, ts_2)
-    # final_dict_list = [dict_array for dict_array in events_list_for_all_observers.values()]
-    united_dicts = [value for internal_list in events_list_for_all_observers.values() for value in internal_list]
+    grouped_dicts: dict[str, list[dict]]
+    flat_dicts : list[dict]
+    grouped_dicts, flat_dicts = events_for_observers(satellite, observers, ts_1, ts_2)
     print(f"Took {time.time() - start_time} seconds")
-    print(f'united_dicts: {united_dicts}')
-    return united_dicts
+    print(f'united_dicts: {flat_dicts}')
+    print(f'grouped_dicts: {grouped_dicts}')
+    return flat_dicts, grouped_dicts
 
 
 class SatellitePath:
@@ -163,9 +175,8 @@ class SatellitePath:
                f'Time points: from {self.t_points[0]} to {self.t_points[-1]}.\n' \
                f'Duration: {(self.t_points[-1] - self.t_points[0]).seconds} sec\n'
 
-    def __getitem__(self, key) -> tuple[float, float, datetime]:
-        return (self.altitude.__getitem__(key), self.azimuth.__getitem__(key),
-               self.t_points.__getitem__(key))
+    def __getitem__(self, key):
+        return (self.altitude[key], self.azimuth[key], self.t_points[key])
 
     def __iter__(self):
         return self
@@ -182,18 +193,18 @@ class SatellitePath:
 class TestSatellitePath:
 
     def __init__(self, test_size: int = 45) -> None:
-        self.altitude = np.linspace(0.0, test_size, num=test_size)
-        self.azimuth = np.linspace(90.0, 90 + test_size, num=test_size)
-        self.dist = np.zeros(test_size)
-        self.alt_rate = np.ones(test_size)
-        self.az_rate = np.ones(test_size)
-        self.dist_rate = np.zeros(test_size)
-        self.az_rotation_direction = 1
-        self.t_points = [datetime.now().astimezone(utc) + timedelta(seconds=6 + x) for x in range(test_size)]
+        self.altitude: np.ndarray = np.linspace(0.0, test_size, num=test_size)
+        self.azimuth: np.ndarray = np.linspace(90.0, 90 + test_size, num=test_size)
+        self.dist: np.ndarray = np.zeros(test_size)
+        self.alt_rate: np.ndarray = np.ones(test_size)
+        self.az_rate: np.ndarray = np.ones(test_size)
+        self.dist_rate: np.ndarray = np.zeros(test_size)
+        self.az_rotation_direction: int = 1
+        self.t_points: list[datetime] = [datetime.now().astimezone(utc) + timedelta(seconds=6 + x) for x in range(test_size)]
         self.__index: int = 0
-    def __getitem__(self, key) -> tuple[float, float, datetime]:
-        return (self.altitude.__getitem__(key), self.azimuth.__getitem__(key),
-               self.t_points.__getitem__(key))
+
+    def __getitem__(self, key) :
+        return (self.altitude[key], self.azimuth[key], self.t_points[key])
 
     def __repr__(self) -> str:
         return f'Altitude deg from {self.altitude[0]:.2f} to {self.altitude[-1]:.2f}\n' \
@@ -260,7 +271,7 @@ def angle_points_for_linspace_time(sat: str, observer: str, t_1: datetime, t_2: 
 
 if __name__ == '__main__':
     # # print(datetime(2022, 6, 20, 10, 10, 10, 0, utc))
-    # # sessions = get_sessions_for_sat('NORBI', '19.06.2022', '19.06.2022')
+    sessions = get_sessions_for_sat('NORBI', OBSERVERS, '2022-12-30', '2022-12-31')
     # # print('response:', sessions, len(sessions))
     # # print(request_celestrak_sat_tle('NORBI'))
     start_time_: datetime = datetime.now(tz=timezone.utc)

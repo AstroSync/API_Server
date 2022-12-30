@@ -22,7 +22,7 @@ async def satellites():
 async def sessions(sat_name: str, start_date: date | str = datetime.utcnow().date(),
                    end_date: date | str = datetime.utcnow().date()):
     print(f'sat_name: {sat_name}, start_date: {start_date}, end_date: {end_date}')
-    session_list: list[dict] = get_sessions_for_sat(sat_name=sat_name, observers=OBSERVERS,
+    session_list, _ = get_sessions_for_sat(sat_name=sat_name, observers=OBSERVERS,
                                                               t_1=start_date, t_2=end_date, local_tle=True)
     print(session_list)
     # schedule_list = MongoStore('10.6.1.74', 'root', 'rootpassword', Session).get_schedule()
