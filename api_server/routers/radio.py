@@ -1,15 +1,15 @@
 from __future__ import annotations
 from fastapi import APIRouter
 from api_server import celery_client
-from api_server.models.db import LoRaConfig, FSK_Config
+# from api_server.models.db import LoRaConfig, FSK_Config
 
 router = APIRouter(prefix="/radio", tags=["Radio"])
 
 
-@router.post("/set_config")
-async def radio_config(config: LoRaConfig | FSK_Config):
-    #gs_device.radio.set_config(radio_config)
-    return config
+# @router.post("/set_config")
+# async def radio_config(config: LoRaConfig | FSK_Config):
+#     #gs_device.radio.set_config(radio_config)
+#     return config
 
 
 @router.post("/send_msg")

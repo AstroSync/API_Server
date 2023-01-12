@@ -21,7 +21,7 @@ async def celery_check_script(user_id: UUID, user_script: UploadFile, script_nam
         print('SCRIPT OK')
         now: datetime = datetime.now().astimezone()
         sha256: str = hashlib.sha256(contents).hexdigest()
-        scriptModel=UserScriptModel(user_id=user_id, username='username', script_name=script_name, description=description,
+        scriptModel = UserScriptModel(user_id=user_id, username='username', script_name=script_name, description=description,
                         content=contents, upload_date=now, last_edited_date=now, size=len(contents), sha256=sha256)
         UserStore().save_script(scriptModel)
     else:

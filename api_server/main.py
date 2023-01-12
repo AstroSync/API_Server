@@ -5,7 +5,7 @@ import uvicorn
 from fastapi import FastAPI
 
 from fastapi.middleware.cors import CORSMiddleware
-from api_server.routers import basic, celery, websocket_api, schedule, radio, rotator, propagator
+from api_server.routers import basic, celery, sat_track, websocket_api, schedule, radio, rotator
 
 with open(os.path.join(os.path.dirname(__file__), "api_description.md"), "r", encoding='utf-8') as f:
     description = f.read()
@@ -16,7 +16,7 @@ app.include_router(radio.router)
 app.include_router(schedule.router)
 app.include_router(websocket_api.router)
 app.include_router(celery.router)
-app.include_router(propagator.router)
+app.include_router(sat_track.router)
 app.include_router(basic.router)
 
 # idp.add_swagger_config(app)

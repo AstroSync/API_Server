@@ -181,6 +181,9 @@ def calc_intersect(t1: TimeRange | EmptyRange, t2: TimeRange | EmptyRange) -> Ti
     if isinstance(t1, EmptyRange) and isinstance(t2, EmptyRange):
         return EmptyRange()
     if not isinstance(t1, EmptyRange) and not isinstance(t2, EmptyRange) and isintersection(t1, t2):
+        min_duration_sec: int = 1
+        if (t1.finish - t2.start).seconds < min_duration_sec:
+            return EmptyRange()
         return TimeRange(start=max(t1.start, t2.start), finish=min(t1.finish, t2.finish))
     return EmptyRange()  # type: ignore
 

@@ -87,28 +87,28 @@ class TimeRangeModel(BaseModel):
     # covered_by: UUID | None
 
 
-class LoRaConfig(BaseModel):
-    coding_rate: str
-    frequency: float
-    bandwidth: str
-    spreading_factor: int
-    tx_power: int
-    sync_word: int
-    preamble_length: int
-    auto_gain_control: bool
-    payload_size: int
-    lna_gain: int
-    lna_boost: bool
-    implicit_mode: bool
-    rx_timeout: int
+# class LoRaConfig(BaseModel):
+#     coding_rate: str
+#     frequency: float
+#     bandwidth: str
+#     spreading_factor: int
+#     tx_power: int
+#     sync_word: int
+#     preamble_length: int
+#     auto_gain_control: bool
+#     payload_size: int
+#     lna_gain: int
+#     lna_boost: bool
+#     implicit_mode: bool
+#     rx_timeout: int
 
 
-class FSK_Config(BaseModel):
-    frequency: float
+# class FSK_Config(BaseModel):
+#     frequency: float
 
 
-class UserSatelliteModel(BaseModel):
-    userId: int
-    user_script: str
-    sat_name: str
-    radio_config: LoRaConfig | FSK_Config
+# class UserSatelliteModel(BaseModel):
+#     userId: int
+#     user_script: str
+#     sat_name: str
+#     radio_config: LoRaConfig | FSK_Config

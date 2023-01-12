@@ -1,20 +1,15 @@
 from __future__ import annotations
 
-import copy
 import os
 import time
-from datetime import date, datetime, timedelta, timezone
-from typing import Literal
-from pytz import utc
+from datetime import date, datetime, timezone
+import numpy as np
 from skyfield.api import load
 from skyfield.sgp4lib import EarthSatellite
 from skyfield.timelib import Time, Timescale
 from skyfield.toposlib import wgs84
-from skyfield.units import Angle, Distance, AngleRate, Velocity
-from skyfield.vectorlib import VectorSum
-from skyfield.positionlib import Geocentric
 from skyfield.toposlib import GeographicPosition
-import numpy as np
+
 
 
 OBSERVERS: dict[str, GeographicPosition] = {'NSU': wgs84.latlon(54.842625, 83.095025, 170),
@@ -98,19 +93,25 @@ def skip_events_until_start(event_type_list: list[int], event_time_list: Time) -
 
 
 def map_events(event_type_list: list[int], event_time_list: Time, location_name: str) -> list[dict]:
-    event_dict: dict[str, datetime | int | str] = {}
-    event_dict_list: list[dict[str, datetime | int | str]] = []
-    for event_type, event_time in zip(event_type_list, event_time_list):  # type: ignore
-        if event_type == 0:
-            event_dict['start_time'] = event_time.astimezone(timezone.utc)  # type: ignore
-        elif event_type == 2:
-            event_dict['finish_time'] = event_time.astimezone(timezone.utc)  # type: ignore
-            event_dict['duration_sec'] = (event_dict['finish_time'] - event_dict['start_time']).seconds  # type: ignore
-            event_dict['finish_time'] = event_dict['finish_time'].isoformat(' ', 'seconds')  # type: ignore
-            event_dict['start_time'] = event_dict['start_time'].isoformat(' ', 'seconds')  # type: ignore
-            event_dict['station'] = location_name
-            event_dict['status'] = 'Available'  # Неопределен
-            event_dict_list.append(copy.copy(event_dict))
+    """ Функция разметки событий спутника. После фильтрации сюда гарантированно попадают события, начинающиеся с 0.
+    Args:
+        event_type_list (list[int]): List of event numbers,
+                                     where 0 - rise above horizone, 1 - culminate, 2 - set below horizone
+        event_time_list (Time): Corresponding time points for events.
+        location_name (str): Observation point name
+
+    Returns:
+        list[dict]: _description_
+    """
+    event_dict_list: list[dict[str, int | str]] = []
+    event_tupples = zip(np.array_split(event_type_list, 3), np.array_split(event_time_list, 3)) # type: ignore
+    for event_list, (start, _, finish) in event_tupples:
+        if len(event_list) == 3:
+            event_dict: dict[str, int | str] = {'duration_sec': (finish - start).seconds,
+                                                'finish_time': finish.astimezone(timezone.utc).isoformat(' ', 'seconds'),
+                                                'start_time': start.astimezone(timezone.utc).isoformat(' ', 'seconds'),
+                                                'station': location_name}
+            event_dict_list.append(event_dict)
     return event_dict_list
 
 
@@ -122,151 +123,35 @@ def events_for_observers(satellite: EarthSatellite, observers: dict, ts_1: Time,
         event_type_list: list[int] = sat_events[1]
         event_time_list: Time = sat_events[0]
         if len(event_type_list) > 1:  # there is at least one available session
-            event_type_list, event_time_list = skip_events_until_start(event_type_list, event_time_list)
-            if len(event_type_list) == 0:
+            filtered_events, filtered_event_times = skip_events_until_start(event_type_list, event_time_list)
+            if len(filtered_events) == 0:
                 continue
-            event_dict_list: list[dict] = map_events(event_type_list, event_time_list, location_name)
+            event_dict_list: list[dict] = map_events(filtered_events, filtered_event_times, location_name)
             events_list_for_all_observers[location_name] = event_dict_list
     return events_list_for_all_observers, event_dict_list
 
 
-def get_sessions_for_sat(sat_name: str, observers: dict, t_1: date | str, t_2: date | str | None = None,
-                         local_tle: bool = True) -> tuple[list[dict], dict[str, list[dict]]]:
+def download_tle(sat_name: str, local_tle: bool) -> EarthSatellite:
     if local_tle:
         satellite: EarthSatellite | None = get_sat_from_local_tle_file(sat_name.upper())
     else:
         satellite = request_celestrak_sat_tle(sat_name.upper())
 
     if satellite is None:
-        raise ValueError
+        raise ValueError('No satellite tle data')
+    return satellite
 
-    start_time: float = time.time()
+
+def get_sessions_for_sat(sat_name: str, observers: dict, t_1: date | str, t_2: date | str | None = None,
+                         local_tle: bool = True) -> tuple[list[dict], dict[str, list[dict]]]:
+    satellite: EarthSatellite = download_tle(sat_name, local_tle)
     ts_1, ts_2 = convert_time_args(t_1, t_2)
     grouped_dicts: dict[str, list[dict]]
     flat_dicts : list[dict]
     grouped_dicts, flat_dicts = events_for_observers(satellite, observers, ts_1, ts_2)
-    print(f"Took {time.time() - start_time} seconds")
     print(f'united_dicts: {flat_dicts}')
-    print(f'grouped_dicts: {grouped_dicts}')
+    # print(f'grouped_dicts: {grouped_dicts}')
     return flat_dicts, grouped_dicts
-
-
-class SatellitePath:
-    def __init__(self, altitude: Angle, azimute: Angle, distance: Distance,
-                 alt_rate: AngleRate, az_rate: AngleRate, dist_rate: Velocity, time_points: list[datetime]) -> None:
-        self.altitude: np.ndarray = altitude.degrees  # type: ignore
-        self.azimuth: np.ndarray = azimute.degrees  # type: ignore
-        self.dist: np.ndarray = distance.km  # type: ignore
-        self.alt_rate: np.ndarray = alt_rate.degrees.per_second  # type: ignore
-        self.az_rate: np.ndarray = az_rate.degrees.per_second  # type: ignore
-        self.dist_rate: np.ndarray = dist_rate.km_per_s  # type: ignore
-        self.t_points: list[datetime] = time_points
-        self.__index: int = 0
-        # 1 - 'up', -1 - 'down'
-        self.az_rotation_direction: Literal[1, -1] = -1 + 2 * (self.azimuth[1] > self.azimuth[0])  # type: ignore
-
-    def __repr__(self) -> str:
-        return f'Altitude deg from {self.altitude[0]:.2f} to {self.altitude[-1]:.2f}\n' \
-               f'Azimuth deg from {self.azimuth[0]:.2f} to {self.azimuth[-1]:.2f}\n' \
-               f'Distance km from {self.dist.min():.2f} to {self.dist.max():.2f}\n' \
-               f'Altitude rate deg/s from {self.alt_rate.min():.2f} to {self.alt_rate.max():.2f}\n' \
-               f'Azimuth rate deg/s from {self.az_rate.min():.2f} to {self.az_rate.max():.2f}\n' \
-               f'Distance rate km/s from {self.dist_rate.min():.2f} to {self.dist_rate.max():.2f}\n' \
-               f'Time points: from {self.t_points[0]} to {self.t_points[-1]}.\n' \
-               f'Duration: {(self.t_points[-1] - self.t_points[0]).seconds} sec\n'
-
-    def __getitem__(self, key):
-        return (self.altitude[key], self.azimuth[key], self.t_points[key])
-
-    def __iter__(self):
-        return self
-
-    def __next__(self) -> tuple[float, float, datetime]:
-        if self.__index < len(self.altitude):
-            var: tuple[float, float, datetime] = (self.altitude[self.__index], self.azimuth[self.__index],
-                    self.t_points[self.__index])
-            self.__index += 1
-            return var
-        raise StopIteration
-
-
-class TestSatellitePath:
-
-    def __init__(self, test_size: int = 45) -> None:
-        self.altitude: np.ndarray = np.linspace(0.0, test_size, num=test_size)
-        self.azimuth: np.ndarray = np.linspace(90.0, 90 + test_size, num=test_size)
-        self.dist: np.ndarray = np.zeros(test_size)
-        self.alt_rate: np.ndarray = np.ones(test_size)
-        self.az_rate: np.ndarray = np.ones(test_size)
-        self.dist_rate: np.ndarray = np.zeros(test_size)
-        self.az_rotation_direction: int = 1
-        self.t_points: list[datetime] = [datetime.now().astimezone(utc) + timedelta(seconds=6 + x) for x in range(test_size)]
-        self.__index: int = 0
-
-    def __getitem__(self, key) :
-        return (self.altitude[key], self.azimuth[key], self.t_points[key])
-
-    def __repr__(self) -> str:
-        return f'Altitude deg from {self.altitude[0]:.2f} to {self.altitude[-1]:.2f}\n' \
-               f'Azimuth deg from {self.azimuth[0]:.2f} to {self.azimuth[-1]:.2f}\n' \
-               f'Distance km from {self.dist.min():.2f} to {self.dist.max():.2f}\n' \
-               f'Altitude rate deg/s from {self.alt_rate.min():.2f} to {self.alt_rate.max():.2f}\n' \
-               f'Azimuth rate deg/s from {self.az_rate.min():.2f} to {self.az_rate.max():.2f}\n' \
-               f'Distance rate km/s from {self.dist_rate.min():.2f} to {self.dist_rate.max():.2f}\n' \
-               f'Time points: from {self.t_points[0]} to {self.t_points[-1]}.\n' \
-               f'Duration: {(self.t_points[-1] - self.t_points[0]).seconds} sec\n'
-
-    def __iter__(self):
-        return self
-
-    def __next__(self) -> tuple[float, float, datetime]:
-        if self.__index < len(self.altitude):
-            var: tuple[float, float, datetime] = (self.altitude[self.__index], self.azimuth[self.__index],
-                    self.t_points[self.__index])
-            self.__index += 1
-            return var
-        raise StopIteration
-
-# def convert_degrees(seq):
-#     """Recalculate angle sequence when it transits over 360 degrees.
-#     e.g.: [358.5, 359.6, 0.2, 1.1] -> [358.5, 359.6, 360.2, 361.1]
-#           [1.1, 0.2, 359.6, 358.5] -> [1.1, 0.2, -0.4, -1.5]
-
-#     Args:
-#         seq (ndarray | list[float]): the sequence of angles
-
-#     Raises:
-#         RuntimeError: check origin sequence carefully when get this exception.
-#         It raises when there are several transition over 360 degrees.
-
-#     Returns:
-#         [ndarray]: Origin sequence if there no transition over 360 degrees
-#         else recalculated sequence as in example.
-#     """
-#     if isinstance(seq, list):
-#         seq = np.array(seq)
-#     diff = np.absolute(seq[1:] - seq[:-1])  # differences of neighboring elements
-#     indices = np.where(diff > 300)[0]
-#     if len(indices) > 1:
-#         raise RuntimeError('Unbelievable shit happened!')
-#     if len(indices) == 0:
-#         return seq
-#     return np.append(seq[:indices[0] + 1], seq[indices[0] + 1:] + 360 * (-1 + 2 * (seq[1] > seq[0])))
-
-
-
-def angle_points_for_linspace_time(sat: str, observer: str, t_1: datetime, t_2: datetime,
-                                   sampling_rate=3.3333, local_tle: bool = True) -> SatellitePath:
-    timescale: Timescale = load.timescale()
-    time_points: Time = timescale.linspace(timescale.from_datetime(t_1), timescale.from_datetime(t_2),
-                                     int((t_2 - t_1).seconds * sampling_rate))
-    satellite: EarthSatellite | None = get_sat_from_local_tle_file(sat.upper()) if local_tle else request_celestrak_sat_tle(sat.upper())
-    if satellite is not None:
-        sat_position: VectorSum = (satellite - OBSERVERS[observer])
-    else:
-        raise RuntimeError('Get incorrect sattelite')
-    topocentric: Geocentric = sat_position.at(time_points)  # type: ignore
-    return SatellitePath(*topocentric.frame_latlon_and_rates(OBSERVERS[observer]), time_points.utc_datetime())  # type: ignore
 
 
 if __name__ == '__main__':
@@ -274,11 +159,6 @@ if __name__ == '__main__':
     sessions = get_sessions_for_sat('NORBI', OBSERVERS, '2022-12-30', '2022-12-31')
     # # print('response:', sessions, len(sessions))
     # # print(request_celestrak_sat_tle('NORBI'))
-    start_time_: datetime = datetime.now(tz=timezone.utc)
-    points: SatellitePath = angle_points_for_linspace_time('NORBI', 'NSU', start_time_, start_time_ + timedelta(seconds=4), local_tle=False)
-    print(points)
-    for alt, az, t_point in points:
-        print(alt, az, t_point)
 
     # print(convert_degrees(np.array([*np.arange(350, 359), *np.arange(0, 9)])))
     # print(convert_degrees(np.array([*np.arange(9, 0, -1), *np.arange(359, 350, -1)])))

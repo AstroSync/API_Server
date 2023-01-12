@@ -14,7 +14,7 @@ class Session(TimeRange):
     script_id: UUID | None
     sat_name: str
     station: str
-    status: str
+    status: str  # Waiting / Process / Finished / Failed
     registration_time: datetime
     result: str
     traceback: str

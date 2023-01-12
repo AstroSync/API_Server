@@ -1,6 +1,8 @@
 from __future__ import annotations
 from datetime import datetime, timedelta
 import random
+
+from pytz import utc
 # from uuid import UUID
 
 # from devtools import debug
@@ -18,8 +20,8 @@ class TerminalTimeRange(TimeRange):
 
     def graphical_view(self) -> str:
         space = ' '
-        return f'{space * ((self.start - datetime.now()).seconds)}|{self.symbol*(self.duration_sec - 1)}|'\
-               f' p={self.priority}'
+        start = datetime.now().astimezone(utc)
+        return f'{space * ((self.start - start).seconds)}|{self.symbol*(self.duration_sec - 1)}| p={self.priority}'
 
 def terminal_print(tr_list: list[TimeRange]) -> None:
     for tr in tr_list:
@@ -27,6 +29,8 @@ def terminal_print(tr_list: list[TimeRange]) -> None:
             if not isinstance(tr, TerminalTimeRange):
                 terminal_tr: TerminalTimeRange = TerminalTimeRange(**tr.dict())
                 print(terminal_tr.graphical_view())
+            else:
+                print(tr.graphical_view())
 
 
 if __name__ == '__main__':

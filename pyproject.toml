@@ -25,6 +25,8 @@ websockets = "^10.4"
 websocket-client = "^1.4.2"
 pandas = "^1.5.2"
 xlrd = "^2.0.1"
+func-timeout = "^4.3.5"
+apscheduler = "^3.9.1.post1"
 
 [tool.poetry.dev-dependencies]
 autopep8 = "^1.7.0"
