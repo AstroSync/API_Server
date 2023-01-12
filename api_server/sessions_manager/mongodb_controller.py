@@ -10,9 +10,9 @@ from bson import CodecOptions, UuidRepresentation
 from pymongo import MongoClient, ASCENDING
 from pymongo.database import Database
 from pymongo.collection import Collection
-from api_server.sessions_store.session import Session
-from api_server.sessions_store.time_range import TimeRange
-from api_server.sessions_store.time_range_store import TimeRangesStore
+from api_server.sessions_manager.session import Session
+from api_server.sessions_manager.time_range import TimeRange
+from api_server.sessions_manager.time_range_store import TimeRangesStore
 
 
 class Singleton(type):
@@ -66,21 +66,27 @@ class MongoStore(TimeRangesStore, metaclass=Singleton):
 
     def update_all(self) -> None:
         self.db_origin_ranges.delete_many({})
-        self.db_origin_ranges.insert_many([tr.dict() for tr in self.origin_ranges])
         self.db_prev_merge.delete_many({})
-        self.db_prev_merge.insert_many([tr.dict() for tr in self.prev_merge])
         self.db_schedule.delete_many({})
-        self.db_schedule.insert_many([tr.dict() for tr in self.schedule])
+        if len(self.origin_ranges) > 0:
+            self.db_origin_ranges.insert_many([tr.dict() for tr in self.origin_ranges])
+        if len(self.prev_merge) > 0:
+            self.db_prev_merge.insert_many([tr.dict() for tr in self.prev_merge])
+        if len(self.schedule) > 0:
+            self.db_schedule.insert_many([tr.dict() for tr in self.schedule])
 
     def append(self, *time_ranges: TimeRange) -> None:
-        self._init_store()
         super().append(*time_ranges)
         self.update_all()
 
     def remove(self, *element: TimeRange) -> None:
-        self._init_store()
         super().remove(*element)
         self.update_all()
+
+    def simple_remove(self, *element: TimeRange) -> None:
+        super().simple_remove(*element)
+        self.update_all()
+
 
     def add_missed(self, *time_ranges: TimeRange) -> None:
         self.db_missed_sessions.insert_many([tr.dict() for tr in time_ranges])

@@ -3,9 +3,9 @@ from datetime import datetime, timedelta
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 # from devtools import debug
-from api_server.sessions_store.terminal_time_range import terminal_print
+from api_server.sessions_manager.terminal_time_range import terminal_print
 # from api_server.db_models import DbTaskModel
-from api_server.sessions_store.time_range import TimeRange, merge
+from api_server.sessions_manager.time_range import TimeRange, merge
 
 
 class Session(TimeRange):

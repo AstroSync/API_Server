@@ -6,7 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, UploadFile
 from api_server import celery_client
 from api_server.models.db import SessionModel, UserScriptModel
-from api_server.sessions_store.scripts_store import UserStore
+from api_server.users.scripts_store import UserStore
 
 
 router = APIRouter(prefix="/celery", tags=["Celery"])

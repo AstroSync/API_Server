@@ -7,8 +7,8 @@ from uuid import UUID
 from pytz import utc  #, uuid4
 from api_server.celery_client import celery_register_session, celery_register_session_test
 from api_server.models.api import RegisterSessionModel
-from api_server.sessions_store.session import Session
-from api_server.sessions_store.mongodb_controller import MongoStore
+from api_server.sessions_manager.session import Session
+from api_server.sessions_manager.mongodb_controller import MongoStore
 # from api_server.celery_client import celery_app
 
 host: str = os.environ.get('GS_ADDR', '10.6.1.74')

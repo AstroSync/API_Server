@@ -6,9 +6,9 @@ from fastapi.responses import JSONResponse
 from api_server.propagator.celestrak_api import get_sat_name_and_num
 from api_server.propagator.propagate import OBSERVERS, get_sessions_for_sat
 from api_server.propagator.sat_path import SatellitePath, angle_points_for_linspace_time
-from api_server.sessions_store.mongodb_controller import MongoStore
-from api_server.sessions_store.session import Session
-from api_server.sessions_store.time_range import TimeRange
+from api_server.sessions_manager.mongodb_controller import MongoStore
+from api_server.sessions_manager.session import Session
+from api_server.sessions_manager.time_range import TimeRange
 # from api_server.keycloak import idp
 
 router = APIRouter(tags=["Propagator"])

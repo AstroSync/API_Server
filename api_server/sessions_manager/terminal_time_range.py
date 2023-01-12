@@ -7,7 +7,7 @@ from pytz import utc
 
 # from devtools import debug
 
-from api_server.sessions_store.time_range import TimeRange, merge
+from api_server.sessions_manager.time_range import TimeRange, merge
 
 
 class TerminalTimeRange(TimeRange):

@@ -15,7 +15,7 @@ from pylint.reporters.text import TextReporter
 from api_server.models.api import UserScriptMeta
 #from api_server.database_api import db_add_user_script, db_register_new_session, get_all_sessions
 # from api_server.hardware.naku_device_api import device
-from api_server.sessions_store.scripts_store import UserStore
+from api_server.users.scripts_store import UserStore
 from api_server.models.db import ResultSessionModel, UserScriptModel
 # from api_server.keycloak import idp
 

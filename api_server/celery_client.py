@@ -4,7 +4,7 @@ from multiprocessing.pool import AsyncResult
 import os
 # import sys
 from celery import Celery  #, group, signature
-from api_server.sessions_store.session import Session
+from api_server.sessions_manager.session import Session
 from api_server import celery_config
 # from api_server.celery_tasks import radio_task, rotator_task_emulation
 

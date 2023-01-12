@@ -7,8 +7,8 @@ import time
 from typing import Callable
 
 from pytz import utc
-from api_server.sessions_store.mongodb_controller import MongoStore
-from api_server.sessions_store.session import Session
+from api_server.sessions_manager.mongodb_controller import MongoStore
+from api_server.sessions_manager.session import Session
 
 mongo_username: str = os.environ.get('MONGO_DB_USERNAME', 'root')
 mongo_pass: str = os.environ.get('MONGO_DB_PASSWORD', 'rootpassword')
@@ -26,7 +26,7 @@ class Scheduler:
     def start(self) -> None:
         if self.__stop_flag:
             self.__stop_flag = False
-            self._thread = Thread(name='task_executer', target=self._tasks_loop_execution, daemon=True)
+            self._thread = Thread(name='task_executer', target=self._tasks_execution_loop, daemon=True)
             self._thread.start()
 
     def stop(self) -> None:
@@ -37,27 +37,32 @@ class Scheduler:
         self.task_callback = callback
 
     def get_next_task_time(self) -> str | None:
-        next_task = self.jobstore.get_next()
+        next_task = self.jobstore.get_next(self.jobstore.schedule)
         if next_task is not None:
             next_task_sec: int = (next_task.start - datetime.now().astimezone(utc)).seconds
-            return f'{next_task.start.isoformat(" ", "seconds"), next_task_sec}'
+            return f'next task start at: {next_task.start.isoformat(" ", "seconds"), next_task_sec}'
         return None
 
-    def _tasks_loop_execution(self) -> None:
+    def _tasks_execution_loop(self) -> None:
         while not self.__stop_flag:
             try:
                 time.sleep(1)
-                next_session = self.jobstore.get_next()
+                next_session = self.jobstore.get_next(self.jobstore.schedule)
+                next_origin = self.jobstore.get_next(self.jobstore.origin_ranges)
                 now: datetime = datetime.now().astimezone(utc)
                 if next_session is not None:
-                    if now > next_session.start + timedelta(self.misfire_grace_time):
-                        self.jobstore.simple_remove(next_session)
+                    if now > next_session.start + timedelta(seconds=self.misfire_grace_time):
+                        self.jobstore.add_missed(next_session)
+                        self.jobstore.schedule.remove(next_session)
                         print('task missed')
-                    if now > next_session.start and callable(self.task_callback):
-                        self.jobstore.simple_remove(next_session)
+                    elif now > next_session.start and callable(self.task_callback):
+                        self.jobstore.schedule.remove(next_session)
                         print('start task')
                         self.task_callback()
-            except Exception as exc:
+                if next_origin is not None:
+                    if now > next_origin.finish:
+                        self.jobstore.simple_remove(next_origin)
+            except RuntimeError as exc:
                 print(exc)
 
 
