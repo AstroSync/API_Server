@@ -10,6 +10,7 @@ from bson import CodecOptions, UuidRepresentation
 from pymongo import MongoClient, ASCENDING
 from pymongo.database import Database
 from pymongo.collection import Collection
+from pytz import utc
 from api_server.sessions_manager.session import Session
 from api_server.sessions_manager.time_range import TimeRange
 from api_server.sessions_manager.time_range_store import TimeRangesStore
@@ -68,6 +69,9 @@ class MongoStore(TimeRangesStore, metaclass=Singleton):
         self.db_origin_ranges.delete_many({})
         self.db_prev_merge.delete_many({})
         self.db_schedule.delete_many({})
+
+        self.schedule = [tr for tr in self.schedule if tr.start < datetime.now.astimezone(utc)]
+
         if len(self.origin_ranges) > 0:
             self.db_origin_ranges.insert_many([tr.dict() for tr in self.origin_ranges])
         if len(self.prev_merge) > 0:
@@ -107,4 +111,3 @@ if __name__ == '__main__':
     print(controller.get_schedule())
     # controller.remove(t_2)
     # controller.append(t_1, t_2)
-

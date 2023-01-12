@@ -99,4 +99,3 @@ if __name__ == '__main__':
     terminal_print(TimeRanges_store.schedule)  # type: ignore
     print('--------------------- Prev ---------------------------')
     terminal_print(TimeRanges_store.prev_merge)  # type: ignore
-

@@ -44,6 +44,7 @@ class Scheduler:
         return None
 
     def _tasks_execution_loop(self) -> None:
+        # пока остается немного неясным поведение регистрации сеанса во время выполнения другого
         while not self.__stop_flag:
             try:
                 time.sleep(1)
